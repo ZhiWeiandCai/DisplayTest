@@ -3,11 +3,14 @@ package com.liftcore.android.displaytest.util;
 import android.util.Log;
 import android.util.Xml;
 
+import com.liftcore.android.displaytest.model.DisplayEntry;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 
 /**
  * Created by Harry on 7/26/2017.
@@ -18,7 +21,7 @@ public class XmlParser {
     // We don't use namespaces
     private static final String ns = null;
 
-    public Entry parse(InputStream in) throws XmlPullParserException, IOException {
+    public ArrayList<DisplayEntry> parse(InputStream in) throws XmlPullParserException, IOException {
         try {
             XmlPullParser parser = Xml.newPullParser();
             parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
@@ -30,8 +33,8 @@ public class XmlParser {
         }
     }
 
-    private Entry readFeed(XmlPullParser parser) throws XmlPullParserException, IOException {
-        Entry entry = null;
+    private ArrayList<DisplayEntry> readFeed(XmlPullParser parser) throws XmlPullParserException, IOException {
+        ArrayList<DisplayEntry> entries = null;
         parser.require(XmlPullParser.START_TAG, ns, "feed");
         while (parser.next() != XmlPullParser.END_TAG) {
 
@@ -43,71 +46,25 @@ public class XmlParser {
             // Starts by looking for the entry tag
             if (name.equals("entry")) {
 
-                entry = readEntry(parser);
+                entries = readEntry(parser);
             } else {
                 skip(parser);
             }
         }
 
-        return entry;
-    }
-
-    public static class Entry {
-        public int vX;
-        public int vY;
-        public int vW;
-        public int vH;
-        public String vPath;
-        public int pX;
-        public int pY;
-        public int pW;
-        public int pH;
-        public String pPath;
-        public int tX;
-        public int tY;
-        public int tW;
-        public int tH;
-        public String text;
-
-        private Entry(int vX, int vY, int vW, int vH, String vPath,
-                      int pX, int pY, int pW, int pH, String pPath,
-                      int tX, int tY, int tW, int tH, String text) {
-            this.vX = vX;
-            this.vY = vY;
-            this.vW = vW;
-            this.vH = vH;
-            this.vPath = vPath;
-            this.pX = pX;
-            this.pY = pY;
-            this.pW = pW;
-            this.pH = pH;
-            this.pPath = pPath;
-            this.tX = tX;
-            this.tY = tY;
-            this.tW = tW;
-            this.tH = tH;
-            this.text = text;
-        }
+        return entries;
     }
 
     // Parses the contents of an entry.
-    private Entry readEntry(XmlPullParser parser) throws XmlPullParserException, IOException {
+    private ArrayList<DisplayEntry> readEntry(XmlPullParser parser) throws XmlPullParserException, IOException {
+        ArrayList<DisplayEntry> entries = new ArrayList<>();
+        DisplayEntry entry = null;
         parser.require(XmlPullParser.START_TAG, ns, "entry");
         int vX = 0;
         int vY = 0;
         int vW = 0;
         int vH = 0;
         String vPath = null;
-        int pX = 0;
-        int pY = 0;
-        int pW = 0;
-        int pH = 0;
-        String pPath = null;
-        int tX = 0;
-        int tY = 0;
-        int tW = 0;
-        int tH = 0;
-        String text = null;
         while (parser.next() != XmlPullParser.END_TAG) {
             if (parser.getEventType() != XmlPullParser.START_TAG) {
                 continue;
@@ -125,6 +82,14 @@ public class XmlParser {
                     vH = Integer.parseInt(parser.getAttributeValue(null, "height"));
                     vPath = parser.getAttributeValue(null, "path");
                     Log.i(TAG, vPath);
+                    entry = new DisplayEntry();
+                    entry.setSortFlag(3);
+                    entry.setxLoc(vX);
+                    entry.setyLoc(vY);
+                    entry.setWidth(vW);
+                    entry.setHeight(vH);
+                    entry.setPath(vPath);
+                    entries.add(entry);
                     parser.nextTag();
                 }
                 parser.require(XmlPullParser.END_TAG, ns, "vedio");
@@ -132,12 +97,20 @@ public class XmlParser {
                 parser.require(XmlPullParser.START_TAG, ns, "pic");
                 String tag = parser.getName();
                 if (tag.equals("pic")) {
-                    pX = Integer.parseInt(parser.getAttributeValue(null, "x"));
-                    pY = Integer.parseInt(parser.getAttributeValue(null, "y"));
-                    pW = Integer.parseInt(parser.getAttributeValue(null, "width"));
-                    pH = Integer.parseInt(parser.getAttributeValue(null, "height"));
-                    pPath = parser.getAttributeValue(null, "path");
-                    Log.i(TAG, pPath);
+                    vX = Integer.parseInt(parser.getAttributeValue(null, "x"));
+                    vY = Integer.parseInt(parser.getAttributeValue(null, "y"));
+                    vW = Integer.parseInt(parser.getAttributeValue(null, "width"));
+                    vH = Integer.parseInt(parser.getAttributeValue(null, "height"));
+                    vPath = parser.getAttributeValue(null, "path");
+                    Log.i(TAG, vPath);
+                    entry = new DisplayEntry();
+                    entry.setSortFlag(2);
+                    entry.setxLoc(vX);
+                    entry.setyLoc(vY);
+                    entry.setWidth(vW);
+                    entry.setHeight(vH);
+                    entry.setPath(vPath);
+                    entries.add(entry);
                     parser.nextTag();
                 }
                 parser.require(XmlPullParser.END_TAG, ns, "pic");
@@ -145,12 +118,20 @@ public class XmlParser {
                 parser.require(XmlPullParser.START_TAG, ns, "Text");
                 String tag = parser.getName();
                 if (tag.equals("Text")) {
-                    tX = Integer.parseInt(parser.getAttributeValue(null, "x"));
-                    tY = Integer.parseInt(parser.getAttributeValue(null, "y"));
-                    tW = Integer.parseInt(parser.getAttributeValue(null, "width"));
-                    tH = Integer.parseInt(parser.getAttributeValue(null, "height"));
-                    text = parser.getAttributeValue(null, "text");
-                    Log.i(TAG, text);
+                    vX = Integer.parseInt(parser.getAttributeValue(null, "x"));
+                    vY = Integer.parseInt(parser.getAttributeValue(null, "y"));
+                    vW = Integer.parseInt(parser.getAttributeValue(null, "width"));
+                    vH = Integer.parseInt(parser.getAttributeValue(null, "height"));
+                    vPath = parser.getAttributeValue(null, "text");
+                    Log.i(TAG, vPath);
+                    entry = new DisplayEntry();
+                    entry.setSortFlag(1);
+                    entry.setxLoc(vX);
+                    entry.setyLoc(vY);
+                    entry.setWidth(vW);
+                    entry.setHeight(vH);
+                    entry.setPath(vPath);
+                    entries.add(entry);
                     parser.nextTag();
                 }
                 parser.require(XmlPullParser.END_TAG, ns, "Text");
@@ -159,7 +140,7 @@ public class XmlParser {
                 skip(parser);
             }
         }
-        return new Entry(vX, vY, vW, vH, vPath, pX, pY, pW, pH, pPath, tX, tY, tW, tH, text);
+        return entries;
     }
 
     // Processes title tags in the feed.

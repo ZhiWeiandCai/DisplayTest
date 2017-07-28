@@ -6,7 +6,6 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +15,7 @@ import android.widget.TextView;
 import android.widget.VideoView;
 
 import com.liftcore.android.displaytest.model.Constants;
+import com.liftcore.android.displaytest.model.DisplayEntry;
 import com.liftcore.android.displaytest.util.Utils;
 import com.liftcore.android.displaytest.util.XmlParser;
 
@@ -24,6 +24,9 @@ import org.xmlpull.v1.XmlPullParserException;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 
 /**
@@ -42,12 +45,9 @@ public class MainFragment extends Fragment {
     private String mParam2;
 
     private String mXmlChildPath = "/DisplayTest/display_test.xml";
-    private XmlParser.Entry mEntry = null;
+    private ArrayList<DisplayEntry> mEntries = null;
 
     private FrameLayout mContainView;
-    VideoView videoView;
-    ImageView imageView;
-    TextView textView;
 
     public MainFragment() {
         // Required empty public constructor
@@ -100,15 +100,15 @@ public class MainFragment extends Fragment {
     }
 
     // Implementation of AsyncTask used to download XML feed from datasource.
-    private class DownloadXmlTask extends AsyncTask<String, Void, XmlParser.Entry> {
+    private class DownloadXmlTask extends AsyncTask<String, Void, ArrayList<DisplayEntry>> {
         @Override
-        protected XmlParser.Entry doInBackground(String... urls) {
+        protected ArrayList<DisplayEntry> doInBackground(String... urls) {
             //Log.i(TAG, Utils.getInnerSDCardPath());
             FileInputStream fIs = null;
             try {
                 fIs = new FileInputStream(Constants.SDCardPath + mXmlChildPath);
                 XmlParser xmlParser = new XmlParser();
-                mEntry = xmlParser.parse(fIs);
+                mEntries = xmlParser.parse(fIs);
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e) {
@@ -124,25 +124,58 @@ public class MainFragment extends Fragment {
                     }
                 }
             }
+            //视频排在前面，图片次之，文本最后
+            Collections.sort(mEntries, new Comparator<DisplayEntry>() {
 
-            return mEntry;
+                @Override
+                public int compare(DisplayEntry o1, DisplayEntry o2) {
+                    return o2.getSortFlag() - o1.getSortFlag();
+                }
+            });
+            return mEntries;
         }
 
         @Override
-        protected void onPostExecute(XmlParser.Entry result) {
-            Log.i(TAG, "tX=" + result.tX);
-            Log.i(TAG, "tY=" + result.tY);
-            Log.i(TAG, "tW=" + result.tW);
-            Log.i(TAG, "tH=" + result.tH);
-            Log.i(TAG, "text=" + result.text);
+        protected void onPostExecute(ArrayList<DisplayEntry> result) {
+
             generateLayout(result);
         }
     }
 
-    private void generateLayout(XmlParser.Entry entry) {
-        videoView = new VideoView(getActivity());
-        imageView = new ImageView(getActivity());
-        textView = new TextView(getActivity());
+    private void generateLayout(ArrayList<DisplayEntry> entries) {
+        FrameLayout.LayoutParams lp = null;
+        TextView tView = null;
+        ImageView iView = null;
+        VideoView vView = null;
+        mContainView.removeViewAt(0);
+        for (DisplayEntry entry : entries) {
+            switch (entry.getSortFlag()) {
+                case 1:
+                    tView = new TextView(getActivity());
+                    lp = new FrameLayout.LayoutParams(entry.getWidth(), entry.getHeight());
+                    lp.setMargins(entry.getxLoc(), entry.getyLoc(), 0, 0);
+                    tView.setLayoutParams(lp);
+                    tView.setBackgroundColor(Color.GREEN);
+                    tView.setText(entry.getPath());
+                    mContainView.addView(tView);
+                    break;
+                case 2:
+                    iView = new ImageView(getActivity());
+                    lp = new FrameLayout.LayoutParams(entry.getWidth(), entry.getHeight());
+                    lp.setMargins(entry.getxLoc(), entry.getyLoc(), 0, 0);
+                    iView.setLayoutParams(lp);
+                    mContainView.addView(iView);
+                    break;
+                case 3:
+                    vView = new VideoView(getActivity());
+                    lp = new FrameLayout.LayoutParams(entry.getWidth(), entry.getHeight());
+                    lp.setMargins(entry.getxLoc(), entry.getyLoc(), 0, 0);
+                    vView.setLayoutParams(lp);
+                    mContainView.addView(vView);
+                    break;
+            }
+        }
+
         //动态添加布局(java方式)
         /*LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -150,47 +183,40 @@ public class MainFragment extends Fragment {
         view.setLayoutParams(lp);//设置布局参数
         view.setOrientation(LinearLayout.HORIZONTAL);*/
 
-        FrameLayout.LayoutParams vlp = new FrameLayout.LayoutParams(entry.vW, entry.vH);
-        FrameLayout.LayoutParams plp = new FrameLayout.LayoutParams(entry.pW, entry.pH);
-        FrameLayout.LayoutParams tlp = new FrameLayout.LayoutParams(entry.tW, entry.tH);
-        vlp.setMargins(entry.vX, entry.vY, 0, 0);
-        plp.setMargins(entry.pX, entry.pY, 0, 0);
-        tlp.setMargins(entry.tX, entry.tY, 0, 0);
+        //mContainView.setBackgroundColor(Color.BLUE);
 
-        videoView.setLayoutParams(vlp);
+        for (int i = 0; i < entries.size(); i++) {
+            if (entries.get(i).getSortFlag() == 3) {
+                vView = (VideoView) mContainView.getChildAt(i);
+                vView.setVideoPath(entries.get(i).getPath());
+                vView.start();
+            } else if (entries.get(i).getSortFlag() == 2) {
+                new GetPicTask((ImageView) mContainView.getChildAt(i)).execute(entries.get(i));
+            }
+        }
 
-        imageView.setLayoutParams(plp);
-        imageView.setBackgroundColor(Color.RED);
-        textView.setLayoutParams(tlp);
-        textView.setBackgroundColor(Color.GREEN);
-        textView.setText(entry.text);
-
-        mContainView.removeViewAt(0);
-        mContainView.addView(imageView);
-        mContainView.addView(videoView);
-        mContainView.addView(textView);
-
-        mContainView.setBackgroundColor(Color.BLUE);
-
-        videoView.setVideoPath(entry.vPath);
-        videoView.start();
-        new GetPicTask().execute(entry.pPath);
     }
 
     // get pic from storage.
-    private class GetPicTask extends AsyncTask<String, Void, Bitmap> {
+    private class GetPicTask extends AsyncTask<DisplayEntry, Void, Bitmap> {
+        private ImageView iv;
+
+        public GetPicTask(ImageView imageView) {
+            this.iv = imageView;
+        }
+
         @Override
-        protected Bitmap doInBackground(String... urls) {
+        protected Bitmap doInBackground(DisplayEntry... urls) {
             //Log.i(TAG, Utils.getInnerSDCardPath());
-            Bitmap bitmap = Utils.decodeSampledBitmapFromStorage(urls[0], mEntry.pW, mEntry.pH);
+            Bitmap bitmap = Utils.decodeSampledBitmapFromStorage(urls[0].getPath(), urls[0].getWidth(), urls[0].getHeight());
 
             return bitmap;
         }
 
         @Override
         protected void onPostExecute(Bitmap result) {
-            if (isVisible() && imageView != null) {
-                imageView.setImageBitmap(result);
+            if (isVisible() && iv != null) {
+                iv.setImageBitmap(result);
             }
         }
     }
