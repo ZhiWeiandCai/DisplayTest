@@ -147,7 +147,7 @@ public class MainFragment extends Fragment {
         TextView tView = null;
         ImageView iView = null;
         VideoView vView = null;
-        mContainView.removeViewAt(0);
+        //mContainView.removeViewAt(0);
         for (DisplayEntry entry : entries) {
             switch (entry.getSortFlag()) {
                 case 1:
